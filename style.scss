@@ -1,0 +1,76 @@
+:root {
+  --light-color: #f0d9b5;
+  --dark-color: #b58863;
+  --cell-size: 60px;
+}
+
+#chessboard {
+  position: relative;
+  background-image: url("standartPieces/chessboard.png");
+  background-size: cover;
+  width: 500px;
+  height: 500px;
+  /*
+  display: grid;
+  grid-template-columns: repeat(8, var(--cell-size));
+  grid-template-rows: repeat(8, var(--cell-size));
+  width: calc(var(--cell-size) * 8);
+  height: calc(var(--cell-size) * 8);*/
+}
+
+.piece{
+  background-size: 100%;
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  overflow: hidden;
+  touch-action: none;
+  will-change: transform;
+}
+.hint{
+  background-size: 100%;
+  width: 12.5%;
+  height: 12.5%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+.move-hint{
+  background-image: url("standartPieces/hint.png");
+}
+
+.took-hint{
+  background-image: url("standartPieces/took_hint.webp");
+  z-index: 3;
+  background-repeat: no-repeat;
+}
+
+$pieces: "n", "k", "b", "p", "q", "r";
+@each $piece in $pieces {
+  .b#{$piece} {
+    background-image: url("standartPieces/b#{$piece}.png");
+    z-index: 2;
+  }
+  .w#{$piece} {
+    background-image: url("standartPieces/w#{$piece}.png");
+    z-index: 2;
+  }
+}
+
+@for $i from 0 through 7 {
+  @for $j from 0 through 7 {
+    .square-#{$i}#{$j} {
+      transform: translate($j * 100%, $i * 100%);
+    }
+  }
+}
+
+#highlight-square{
+  background-color: #87251f;
+  z-index: 1;
+}
