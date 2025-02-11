@@ -1,6 +1,12 @@
 const chessBoard = document.getElementById('chessboard');
 let move = 0;
 
+const BOARD_SIZE = 8;
+const WHITE_PAWN_DIRECTION = -1;
+const BLACK_PAWN_DIRECTION = 1;
+const FIRST_WHITE_PAWN_ROW = 6;
+const FIRST_BLACK_PAWN_ROW = 1;
+
 const MOVE_DIRECTIONS = {
     rook: [[1, 0], [-1, 0], [0, 1], [0, -1]],
     bishop: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
@@ -27,13 +33,13 @@ function pieceClick(event) {
 function addHints(piece_type, moves, pieceCoords) {
     if (piece_type[1] === 'p') {
         if (moves.length === 0) {
-            let dRow = (piece_type[0] === 'w' ? -1 : +1);
+            let dRow = (piece_type[0] === 'w' ? WHITE_PAWN_DIRECTION : BLACK_PAWN_DIRECTION);
             checkPiece(piece_type, +pieceCoords[0] + dRow, +pieceCoords[1] - 1, null, null, null, true);
             checkPiece(piece_type, +pieceCoords[0] + dRow, +pieceCoords[1] + 1, null, null, null, true);
             return;
         }
 
-        let pieceRow = moves[0][0] + (piece_type[0] === 'w' ? +1 : -1);
+        let pieceRow = moves[0][0] + (piece_type[0] === 'w' ? BLACK_PAWN_DIRECTION : WHITE_PAWN_DIRECTION);
         checkPiece(piece_type, moves[0][0], moves[0][1] - 1, null, null, null, true);
         checkPiece(piece_type, moves[0][0], moves[0][1] + 1, null, null, null, true);
 
@@ -62,7 +68,7 @@ const pushMove = (moves, pieceRow, pieceCol, row, col) => {
 
 const traverseMoves = (pieceRow, pieceCol, deltas, pieceType, moves) => {
     deltas.forEach(([dx, dy]) => {
-        for (let step = 1; step < 8; step++) {
+        for (let step = 1; step < BOARD_SIZE; step++) {
             const newRow = +pieceRow + dx * step;
             const newCol = +pieceCol + dy * step;
             if (!isValidMove(newRow, newCol) || checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) break;
@@ -72,7 +78,7 @@ const traverseMoves = (pieceRow, pieceCol, deltas, pieceType, moves) => {
 };
 
 const handlePawnMoves = (pieceType, pieceRow, pieceCol, moves) => {
-    const direction = pieceType[0] === 'w' ? -1 : 1;
+    const direction = pieceType[0] === 'w' ? WHITE_PAWN_DIRECTION : BLACK_PAWN_DIRECTION;
     if (!checkPiece(pieceType, +pieceRow + direction, pieceCol)) {
         pushMove(moves, pieceRow, pieceCol, +pieceRow + direction, pieceCol);
     }
@@ -82,7 +88,7 @@ const handlePawnMoves = (pieceType, pieceRow, pieceCol, moves) => {
     if (checkPiece(pieceType, +pieceRow + direction, +pieceCol + 1, null, null, null, true)) {
         pushMove(moves, pieceRow, pieceCol, +pieceRow + direction, +pieceCol + 1);
     }
-    if ((pieceType[0] === 'w' && pieceRow == 6) || (pieceType[0] === 'b' && pieceRow == 1)) {
+    if ((pieceType[0] === 'w' && pieceRow == FIRST_WHITE_PAWN_ROW) || (pieceType[0] === 'b' && pieceRow == FIRST_BLACK_PAWN_ROW)) {
         if (!checkPiece(pieceType, +pieceRow + 2 * direction, pieceCol)) {
             pushMove(moves, pieceRow, pieceCol, +pieceRow + 2 * direction, pieceCol);
         }
@@ -140,7 +146,7 @@ function isSquareUnderAttack(row, col, attackerColor, boardSituation) {
 
     const traverse = (deltas, pieceType) => {
         deltas.forEach(([dx, dy]) => {
-            for (let step = 1; step < 8; step++) {
+            for (let step = 1; step < BOARD_SIZE; step++) {
                 const newRow = +row + dx * step;
                 const newCol = +col + dy * step;
                 if (isValidMove(newRow, newCol) && isPiece(newRow, newCol)) {
@@ -353,8 +359,8 @@ let pieces = [
 ]
 let piecesCopy = structuredClone(pieces);
 
-for (let i = 0; i < 8; i++) {
-    for (let j = 0; j < 8; j++) {
+for (let i = 0; i < BOARD_SIZE; i++) {
+    for (let j = 0; j < BOARD_SIZE; j++) {
         if (pieces[i][j] !== '')
             placePiece(chessBoard, `${i}${j}`, pieces[i][j])
     }
