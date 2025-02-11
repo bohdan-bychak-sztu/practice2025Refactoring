@@ -1,6 +1,14 @@
 const chessBoard = document.getElementById('chessboard');
 let move = 0;
 
+const MOVE_DIRECTIONS = {
+    rook: [[1, 0], [-1, 0], [0, 1], [0, -1]],
+    bishop: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
+    queen: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
+    king: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]],
+    knight: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
+};
+
 function pieceClick(event) {
     const pieceColor = event.target.classList[1][0];
 
@@ -18,53 +26,42 @@ function pieceClick(event) {
 
 function addHints(piece_type, moves, pieceCoords) {
     if (piece_type[1] === 'p') {
-        /*moves.forEach(move => {
-            if (!isTook(piece_type, move[0], move[1]))
-                addHint(move[0], move[1]);
-        })*/
-        if (moves.length === 0){
+        if (moves.length === 0) {
             let dRow = (piece_type[0] === 'w' ? -1 : +1);
-            if (isMoveLegal(pieceCoords[0], +pieceCoords[1], +pieceCoords[0] + dRow, +pieceCoords[0] - 1))
-                isTook(piece_type, +pieceCoords[0] + dRow, +pieceCoords[1] - 1);
-            if (isMoveLegal(pieceCoords[0], +pieceCoords[1], +pieceCoords[0] + dRow, +pieceCoords[0] + 1))
-                isTook(piece_type, +pieceCoords[0] + dRow, +pieceCoords[1] + 1);
+            checkPiece(piece_type, +pieceCoords[0] + dRow, +pieceCoords[1] - 1, null, null, null, true);
+            checkPiece(piece_type, +pieceCoords[0] + dRow, +pieceCoords[1] + 1, null, null, null, true);
             return;
         }
 
         let pieceRow = moves[0][0] + (piece_type[0] === 'w' ? +1 : -1);
-        if (isMoveLegal(pieceRow, moves[0][1], moves[0][0], moves[0][1] - 1))
-            isTook(piece_type, moves[0][0], moves[0][1] - 1);
-        if (isMoveLegal(pieceRow, moves[0][1], moves[0][0], +moves[0][1] + 1))
-            isTook(piece_type, moves[0][0], +moves[0][1] + 1);
-        if (pieces[moves[0][0]][moves[0][1]] === '')
+        checkPiece(piece_type, moves[0][0], moves[0][1] - 1, null, null, null, true);
+        checkPiece(piece_type, moves[0][0], moves[0][1] + 1, null, null, null, true);
+
+        if (pieces[moves[0][0]][moves[0][1]] === '') {
             moves.forEach(move => {
-                if (isMoveLegal(pieceRow, moves[0][1], moves[0][0], moves[0][1]))
-                addHint(move[0], move[1]);
-            })
+                if (isMoveLegal(pieceRow, moves[0][1], moves[0][0], moves[0][1])) {
+                    addHint(move[0], move[1], 'move');
+                }
+            });
+        }
         return;
     }
+
     moves.forEach(move => {
-        if (!isTook(piece_type, move[0], move[1]))
-            addHint(move[0], move[1]);
-    })
+        if (!checkPiece(piece_type, move[0], move[1], null, null, null, true)) {
+            addHint(move[0], move[1], 'move');
+        }
+    });
 }
 
 function getAvailableMoves(pieceType, pieceRow, pieceCol) {
     document.querySelectorAll('.hint').forEach(hint => hint.remove());
-
     const moves = [];
-    const directions = {
-        rook: [[1, 0], [-1, 0], [0, 1], [0, -1]],
-        bishop: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
-        queen: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
-        king: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]],
-        knight: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
-    };
 
     const pushMove = (row, col) => {
         if (isMoveLegal(pieceRow, pieceCol, row, col))
             moves.push([row, col]);
-    }
+    };
 
     const isValidMove = (row, col) => row >= 0 && row <= 7 && col >= 0 && col <= 7;
 
@@ -73,7 +70,7 @@ function getAvailableMoves(pieceType, pieceRow, pieceCol) {
             for (let step = 1; step < 8; step++) {
                 const newRow = +pieceRow + dx * step;
                 const newCol = +pieceCol + dy * step;
-                if (!isValidMove(newRow, newCol) || isPieceOld(pieces[newRow][newCol], pieceType, newRow, newCol, moves, pieceRow, pieceCol)) break;
+                if (!isValidMove(newRow, newCol) || checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) break;
                 pushMove(newRow, newCol);
             }
         });
@@ -81,53 +78,47 @@ function getAvailableMoves(pieceType, pieceRow, pieceCol) {
 
     switch (pieceType) {
         case 'wp':
-            if (!isPiece(pieceType, +pieceRow - 1, pieceCol))
-                pushMove(+pieceRow - 1, pieceCol);
-            if (isTook(pieceType, +pieceRow - 1, +pieceCol - 1))
-                pushMove(+pieceRow - 1, +pieceCol - 1);
-            if (isTook(pieceType, +pieceRow - 1, +pieceCol + 1))
-                pushMove(+pieceRow - 1, +pieceCol + 1);
-            if (pieceRow == 6 && !isPiece(pieceType, +pieceRow - 2, pieceCol)) pushMove(+pieceRow - 2, pieceCol);
-
-            break;
         case 'bp':
-            if (!isPiece(pieceType, +pieceRow + 1, pieceCol))
-                pushMove(+pieceRow + 1, pieceCol);
-            if (isTook(pieceType, +pieceRow + 1, +pieceCol - 1))
-                pushMove(+pieceRow + 1, +pieceCol - 1);
-            if (isTook(pieceType, +pieceRow + 1, +pieceCol + 1))
-                pushMove(+pieceRow + 1, +pieceCol + 1);
-            if (pieceRow == 1 && !isPiece(pieceType, +pieceRow + 2, pieceCol)) pushMove(+pieceRow + 2, pieceCol);
-
+            let direction = pieceType[0] === 'w' ? -1 : 1;
+            if (!checkPiece(pieceType, +pieceRow + direction, pieceCol))
+                pushMove(+pieceRow + direction, pieceCol);
+            if (checkPiece(pieceType, +pieceRow + direction, +pieceCol - 1, null, null, null, true))
+                pushMove(+pieceRow + direction, +pieceCol - 1);
+            if (checkPiece(pieceType, +pieceRow + direction, +pieceCol + 1, null, null, null, true))
+                pushMove(+pieceRow + direction, +pieceCol + 1);
+            if ((pieceType[0] === 'w' && pieceRow == 6) || (pieceType[0] === 'b' && pieceRow == 1)) {
+                if (!checkPiece(pieceType, +pieceRow + 2 * direction, pieceCol))
+                    pushMove(+pieceRow + 2 * direction, pieceCol);
+            }
             break;
         case 'wr':
         case 'br':
-            traverse(directions.rook);
+            traverse(MOVE_DIRECTIONS.rook);
             break;
         case 'wb':
         case 'bb':
-            traverse(directions.bishop);
+            traverse(MOVE_DIRECTIONS.bishop);
             break;
         case 'wq':
         case 'bq':
-            traverse(directions.queen);
+            traverse(MOVE_DIRECTIONS.queen);
             break;
         case 'wk':
         case 'bk':
-            directions.king.forEach(([dx, dy]) => {
+            MOVE_DIRECTIONS.king.forEach(([dx, dy]) => {
                 const newRow = +pieceRow + dx;
                 const newCol = +pieceCol + dy;
-                if (isValidMove(newRow, newCol) && !isPieceOld(pieces[newRow][newCol], pieceType, newRow, newCol, moves, pieceRow, pieceCol)) {
+                if (isValidMove(newRow, newCol) && !checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) {
                     pushMove(newRow, newCol);
                 }
             });
             break;
         case 'wn':
         case 'bn':
-            directions.knight.forEach(([dx, dy]) => {
+            MOVE_DIRECTIONS.knight.forEach(([dx, dy]) => {
                 const newRow = +pieceRow + dx;
                 const newCol = +pieceCol + dy;
-                if (isValidMove(newRow, newCol) && !isPieceOld(pieces[newRow][newCol], pieceType, newRow, newCol, moves, pieceRow, pieceCol)) {
+                if (isValidMove(newRow, newCol) && !checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) {
                     pushMove(newRow, newCol);
                 }
             });
@@ -141,13 +132,6 @@ function isSquareUnderAttack(row, col, attackerColor, boardSituation) {
     const rookSquares = [];
     const bishopSquares = [];
     const kingSquares = [];
-    const directions = {
-        rook: [[1, 0], [-1, 0], [0, 1], [0, -1]],
-        bishop: [[1, 1], [1, -1], [-1, 1], [-1, -1]],
-        queen: [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]],
-        king: [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]],
-        knight: [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]]
-    };
 
     const isValidMove = (row, col) => row >= 0 && row <= 7 && col >= 0 && col <= 7;
 
@@ -172,8 +156,8 @@ function isSquareUnderAttack(row, col, attackerColor, boardSituation) {
             }
         });
     };
-    traverse(directions.rook, 'rook');
-    traverse(directions.bishop, 'bishop');
+    traverse(MOVE_DIRECTIONS.rook, 'rook');
+    traverse(MOVE_DIRECTIONS.bishop, 'bishop');
     let isTrue = rookSquares.some(pieceCoord => {
         const piece = boardSituation[pieceCoord[0]][pieceCoord[1]];
         return piece[0] === attackerColor && ['r', 'q'].includes(piece[1]);
@@ -192,14 +176,14 @@ function isSquareUnderAttack(row, col, attackerColor, boardSituation) {
         if (boardSituation[+row - 1][+col + 1] === 'bp' || boardSituation[+row - 1][+col - 1] === 'bp')
             return true;
     }
-    isTrue = directions.king.some(([dx, dy]) => {
+    isTrue = MOVE_DIRECTIONS.king.some(([dx, dy]) => {
         const newRow = +row + dx;
         const newCol = +col + dy;
         return isValidMove(newRow, newCol) && (boardSituation[newRow][newCol] === (attackerColor + 'k'));
     });
     if (isTrue) return true;
 
-    return directions.knight.some(([dx, dy]) => {
+    return MOVE_DIRECTIONS.knight.some(([dx, dy]) => {
         const newRow = +row + dx;
         const newCol = +col + dy;
         return isValidMove(newRow, newCol) && (boardSituation[newRow][newCol] === (attackerColor + 'n'));
@@ -209,57 +193,31 @@ function isSquareUnderAttack(row, col, attackerColor, boardSituation) {
 }
 
 
-function isPieceOld(aimed_piece_type, current_piece_type, row, col, moves, pieceRow, pieceCol) {
+function checkPiece(current_piece_type, row, col, pieceRow = null, pieceCol = null, moves = null, checkTook = false) {
     if (col > 7 || col < 0 || row > 7 || row < 0)
         return true;
-    if (aimed_piece_type === '' || aimed_piece_type === undefined)
-        return false;
-    if (aimed_piece_type[0] === current_piece_type[0]) {
+
+    const aimed_piece_type = pieces[row]?.[col] ?? '';
+
+    if (aimed_piece_type === '')
+        return checkTook ? false : false; // Порожня клітинка
+
+    if (aimed_piece_type[0] === current_piece_type[0])
+        return true; // Фігура того ж кольору
+
+    if (checkTook) {
+        addHint(row, col, 'took');
         return true;
     }
-    if (isMoveLegal(pieceRow, pieceCol, row, col))
+
+    if (moves !== null && pieceRow !== null && pieceCol !== null && isMoveLegal(pieceRow, pieceCol, row, col)) {
         moves.push([row, col]);
-    return true;
-}
-
-function isPiece(current_piece_type, row, col, pieceRow, pieceCol) {
-    if (col > 7 || col < 0 || row > 7 || row < 0)
-        return true;
-    const aimed_piece_type = pieces[row][col];
-    if (aimed_piece_type === '' || aimed_piece_type === undefined)
-        return false;
-    if (aimed_piece_type[0] === current_piece_type[0]) {
-        return true;
     }
+
     return true;
 }
 
-function isTook(current_piece_type, row, col) {
 
-    if ((pieces[row][col] ?? '') === '')
-        return false;
-    if (pieces[row][col][0] === current_piece_type[0])
-        return false;
-    addTookHint(row, col);
-    return true;
-}
-
-function isPawnTook(current_piece_type, row, col) {
-    if (pieces[row][col] === '')
-        return false;
-    if (pieces[row][col][0] === current_piece_type[0])
-        return false;
-    addTookHint(row, col);
-    return true;
-}
-
-function addHint(piece_row, piece_col) {
-
-    const hint = document.createElement('div');
-    hint.className = `hint move-hint square-${piece_row}${piece_col}`;
-    hint.addEventListener('click', movePiece);
-    chessBoard.appendChild(hint);
-}
 
 function isMoveLegal(piece_row, piece_col, move_row, move_col) {
     piecesCopy = structuredClone(pieces);
@@ -269,10 +227,20 @@ function isMoveLegal(piece_row, piece_col, move_row, move_col) {
 
 }
 
-function addTookHint(piece_row, piece_col) {
+
+function addHint(piece_row, piece_col, type) {
     const hint = document.createElement('div');
-    hint.className = `hint took-hint square-${piece_row}${piece_col}`;
-    hint.addEventListener('click', tookPiece);
+
+    // Визначаємо клас в залежності від типу підказки
+    hint.className = `hint ${type}-hint square-${piece_row}${piece_col}`;
+
+    // Додаємо обробник події в залежності від типу
+    if (type === 'move') {
+        hint.addEventListener('click', movePiece);
+    } else if (type === 'took') {
+        hint.addEventListener('click', tookPiece);
+    }
+
     chessBoard.appendChild(hint);
 }
 
