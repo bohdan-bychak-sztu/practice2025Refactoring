@@ -54,74 +54,79 @@ function addHints(piece_type, moves, pieceCoords) {
     });
 }
 
+const isValidMove = (row, col) => row >= 0 && row <= 7 && col >= 0 && col <= 7;
+
+const pushMove = (moves, pieceRow, pieceCol, row, col) => {
+    if (isMoveLegal(pieceRow, pieceCol, row, col)) moves.push([row, col]);
+};
+
+const traverseMoves = (pieceRow, pieceCol, deltas, pieceType, moves) => {
+    deltas.forEach(([dx, dy]) => {
+        for (let step = 1; step < 8; step++) {
+            const newRow = +pieceRow + dx * step;
+            const newCol = +pieceCol + dy * step;
+            if (!isValidMove(newRow, newCol) || checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) break;
+            pushMove(moves, pieceRow, pieceCol, newRow, newCol);
+        }
+    });
+};
+
+const handlePawnMoves = (pieceType, pieceRow, pieceCol, moves) => {
+    const direction = pieceType[0] === 'w' ? -1 : 1;
+    if (!checkPiece(pieceType, +pieceRow + direction, pieceCol)) {
+        pushMove(moves, pieceRow, pieceCol, +pieceRow + direction, pieceCol);
+    }
+    if (checkPiece(pieceType, +pieceRow + direction, +pieceCol - 1, null, null, null, true)) {
+        pushMove(moves, pieceRow, pieceCol, +pieceRow + direction, +pieceCol - 1);
+    }
+    if (checkPiece(pieceType, +pieceRow + direction, +pieceCol + 1, null, null, null, true)) {
+        pushMove(moves, pieceRow, pieceCol, +pieceRow + direction, +pieceCol + 1);
+    }
+    if ((pieceType[0] === 'w' && pieceRow == 6) || (pieceType[0] === 'b' && pieceRow == 1)) {
+        if (!checkPiece(pieceType, +pieceRow + 2 * direction, pieceCol)) {
+            pushMove(moves, pieceRow, pieceCol, +pieceRow + 2 * direction, pieceCol);
+        }
+    }
+};
+
+const handleKingOrKnightMoves = (pieceRow, pieceCol, deltas, pieceType, moves) => {
+    deltas.forEach(([dx, dy]) => {
+        const newRow = +pieceRow + dx;
+        const newCol = +pieceCol + dy;
+        if (isValidMove(newRow, newCol) && !checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) {
+            pushMove(moves, pieceRow, pieceCol, newRow, newCol);
+        }
+    });
+};
+
 function getAvailableMoves(pieceType, pieceRow, pieceCol) {
     document.querySelectorAll('.hint').forEach(hint => hint.remove());
     const moves = [];
 
-    const pushMove = (row, col) => {
-        if (isMoveLegal(pieceRow, pieceCol, row, col))
-            moves.push([row, col]);
-    };
-
-    const isValidMove = (row, col) => row >= 0 && row <= 7 && col >= 0 && col <= 7;
-
-    const traverse = (deltas) => {
-        deltas.forEach(([dx, dy]) => {
-            for (let step = 1; step < 8; step++) {
-                const newRow = +pieceRow + dx * step;
-                const newCol = +pieceCol + dy * step;
-                if (!isValidMove(newRow, newCol) || checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) break;
-                pushMove(newRow, newCol);
-            }
-        });
-    };
-
     switch (pieceType) {
         case 'wp':
         case 'bp':
-            let direction = pieceType[0] === 'w' ? -1 : 1;
-            if (!checkPiece(pieceType, +pieceRow + direction, pieceCol))
-                pushMove(+pieceRow + direction, pieceCol);
-            if (checkPiece(pieceType, +pieceRow + direction, +pieceCol - 1, null, null, null, true))
-                pushMove(+pieceRow + direction, +pieceCol - 1);
-            if (checkPiece(pieceType, +pieceRow + direction, +pieceCol + 1, null, null, null, true))
-                pushMove(+pieceRow + direction, +pieceCol + 1);
-            if ((pieceType[0] === 'w' && pieceRow == 6) || (pieceType[0] === 'b' && pieceRow == 1)) {
-                if (!checkPiece(pieceType, +pieceRow + 2 * direction, pieceCol))
-                    pushMove(+pieceRow + 2 * direction, pieceCol);
-            }
+            handlePawnMoves(pieceType, pieceRow, pieceCol, moves);
             break;
         case 'wr':
         case 'br':
-            traverse(MOVE_DIRECTIONS.rook);
+            traverseMoves(pieceRow, pieceCol, MOVE_DIRECTIONS.rook, pieceType, moves);
             break;
         case 'wb':
         case 'bb':
-            traverse(MOVE_DIRECTIONS.bishop);
+            traverseMoves(pieceRow, pieceCol, MOVE_DIRECTIONS.bishop, pieceType, moves);
             break;
         case 'wq':
         case 'bq':
-            traverse(MOVE_DIRECTIONS.queen);
+            traverseMoves(pieceRow, pieceCol, MOVE_DIRECTIONS.queen, pieceType, moves);
             break;
         case 'wk':
         case 'bk':
-            MOVE_DIRECTIONS.king.forEach(([dx, dy]) => {
-                const newRow = +pieceRow + dx;
-                const newCol = +pieceCol + dy;
-                if (isValidMove(newRow, newCol) && !checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) {
-                    pushMove(newRow, newCol);
-                }
-            });
+            handleKingOrKnightMoves(pieceRow, pieceCol, MOVE_DIRECTIONS.king, pieceType, moves);
             break;
         case 'wn':
         case 'bn':
-            MOVE_DIRECTIONS.knight.forEach(([dx, dy]) => {
-                const newRow = +pieceRow + dx;
-                const newCol = +pieceCol + dy;
-                if (isValidMove(newRow, newCol) && !checkPiece(pieceType, newRow, newCol, pieceRow, pieceCol, moves)) {
-                    pushMove(newRow, newCol);
-                }
-            });
+            handleKingOrKnightMoves(pieceRow, pieceCol, MOVE_DIRECTIONS.knight, pieceType, moves);
             break;
     }
 
@@ -129,67 +134,56 @@ function getAvailableMoves(pieceType, pieceRow, pieceCol) {
 }
 
 function isSquareUnderAttack(row, col, attackerColor, boardSituation) {
-    const rookSquares = [];
-    const bishopSquares = [];
-    const kingSquares = [];
+    const pieceSquares = { rook: [], bishop: [], king: [] };
 
-    const isValidMove = (row, col) => row >= 0 && row <= 7 && col >= 0 && col <= 7;
+    const isPiece = (row, col) => boardSituation[row]?.[col] !== '' && boardSituation[row]?.[col] !== undefined;
 
-    function isPiece(row, col) {
-        return !((boardSituation[row][col] === '') || (boardSituation[row][col] === undefined));
-    }
-
-    const traverse = (deltas, piece) => {
+    const traverse = (deltas, pieceType) => {
         deltas.forEach(([dx, dy]) => {
             for (let step = 1; step < 8; step++) {
                 const newRow = +row + dx * step;
                 const newCol = +col + dy * step;
                 if (isValidMove(newRow, newCol) && isPiece(newRow, newCol)) {
-                    if (piece === 'rook')
-                        rookSquares.push([newRow, newCol]);
-                    else if (piece === 'bishop')
-                        bishopSquares.push([newRow, newCol]);
-                    else if (piece === 'king')
-                        kingSquares.push([newRow, newCol]);
+                    pieceSquares[pieceType].push([newRow, newCol]);
                     break;
                 }
             }
         });
     };
+
     traverse(MOVE_DIRECTIONS.rook, 'rook');
     traverse(MOVE_DIRECTIONS.bishop, 'bishop');
-    let isTrue = rookSquares.some(pieceCoord => {
-        const piece = boardSituation[pieceCoord[0]][pieceCoord[1]];
-        return piece[0] === attackerColor && ['r', 'q'].includes(piece[1]);
+
+    const isAttackedByPiece = (pieceCoords, validPieces) => pieceCoords.some(([r, c]) => {
+        const piece = boardSituation[r][c];
+        return piece[0] === attackerColor && validPieces.includes(piece[1]);
     });
-    if (isTrue) return true;
-    isTrue = bishopSquares.some(pieceCoord => {
-        const piece = boardSituation[pieceCoord[0]][pieceCoord[1]];
-        return piece[0] === attackerColor && ['b', 'q'].includes(piece[1]);
-    });
-    if (isTrue) return true;
-    if (attackerColor === 'w') {
-        if (boardSituation[+row + 1][+col + 1] === 'wp' || boardSituation[+row + 1][+col - 1] === 'wp')
-            return true;
+
+    if (isAttackedByPiece(pieceSquares.rook, ['r', 'q']) || isAttackedByPiece(pieceSquares.bishop, ['b', 'q'])) {
+        return true;
     }
-    if (attackerColor === 'b') {
-        if (boardSituation[+row - 1][+col + 1] === 'bp' || boardSituation[+row - 1][+col - 1] === 'bp')
-            return true;
+
+    const pawnAttack = (attackerColor === 'w')
+        ? [[+row + 1, +col + 1], [+row + 1, +col - 1]]
+        : [[+row - 1, +col + 1], [+row - 1, +col - 1]];
+
+    if (pawnAttack.some(([r, c]) => boardSituation[r]?.[c] === `${attackerColor}p`)) {
+        return true;
     }
-    isTrue = MOVE_DIRECTIONS.king.some(([dx, dy]) => {
+
+    if (MOVE_DIRECTIONS.king.some(([dx, dy]) => {
         const newRow = +row + dx;
         const newCol = +col + dy;
-        return isValidMove(newRow, newCol) && (boardSituation[newRow][newCol] === (attackerColor + 'k'));
-    });
-    if (isTrue) return true;
+        return isValidMove(newRow, newCol) && boardSituation[newRow]?.[newCol] === `${attackerColor}k`;
+    })) {
+        return true;
+    }
 
     return MOVE_DIRECTIONS.knight.some(([dx, dy]) => {
         const newRow = +row + dx;
         const newCol = +col + dy;
-        return isValidMove(newRow, newCol) && (boardSituation[newRow][newCol] === (attackerColor + 'n'));
+        return isValidMove(newRow, newCol) && boardSituation[newRow]?.[newCol] === `${attackerColor}n`;
     });
-
-    return false;
 }
 
 
